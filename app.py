@@ -12,10 +12,18 @@ app.config['MAX_CONTENT_LENGTH'] = 50 * 1024 * 1024  # 50MB 限制
 # 建立上傳資料夾
 UPLOAD_FOLDER = 'uploads'
 PROCESSED_FOLDER = 'processed'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
-if not os.path.exists(PROCESSED_FOLDER):
-    os.makedirs(PROCESSED_FOLDER)
+
+# 確保資料夾存在並有正確權限
+def ensure_directories():
+    for folder in [UPLOAD_FOLDER, PROCESSED_FOLDER]:
+        if not os.path.exists(folder):
+            os.makedirs(folder, mode=0o755)
+            print(f"Created directory: {folder}")
+        else:
+            print(f"Directory exists: {folder}")
+
+# 創建資料夾
+ensure_directories()
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['PROCESSED_FOLDER'] = PROCESSED_FOLDER
@@ -101,12 +109,20 @@ def upload_file():
         # 儲存上傳的檔案
         file.save(input_path)
         
+        # 確保輸出目錄存在
+        ensure_directories()
+        
         # 處理PDF
         success, message = remove_pdf_password(input_path, password, output_path)
         
         # 清理上傳的檔案
         if os.path.exists(input_path):
             os.remove(input_path)
+            
+        # 檢查輸出檔案是否成功創建
+        if success and not os.path.exists(output_path):
+            success = False
+            message = f"檔案處理失敗：輸出檔案未能創建於 {output_path}"
         
         if success:
             flash(message, 'success')
